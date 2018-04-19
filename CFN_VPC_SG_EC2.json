@@ -1,0 +1,261 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Creates a two-subnet VPC (Public w/ NAT gateway and private)",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+		    "ParameterGroups": [{
+			    "Label": {
+				    "default": "VPC configuration parameters"
+				},
+                "Parameters": ["VPCCIDR",
+                "PublicSubnetCIDR",
+                "SSHLocation"]
+            }],
+            "ParameterLabels": {
+                "VPCCIDR": {
+                    "default": "Enter CIDR of new VPC"
+                },
+                "PublicSubnetCIDR": {
+                    "default": "Enter CIDR of the public subnet"
+				},	  
+				"SSHLocation": {
+                    "default": "Subnet allowed to ssh on TCP to public subnet"
+                }
+            }
+        }
+	},	 
+	"parameters": {
+	    "VPCCIDR": {
+		    "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-8]))$",
+			"ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
+			"Default": "10.10.0.0/16",
+			"Description": "CIDR block for entire VPC.",
+			"Type": "String"
+		},
+        "pubicSubnetCIDR": {
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6[6-9]|2[0-8]))$",
+			"ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
+			"Default": "10.10.10.0/24",
+			"Description": "CIDR block for the public subnet",
+			"Type": "String" 
+        },
+        "SSHLocation": {		
+		    "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-81]))$",
+			"ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/0-28",
+			"Default": "0.0.0.0/0",
+			"Description": "Network allowed to ssh to instances in public subnet",
+			"Type": "String" 
+        }
+	},
+    "Mappings": {
+   
+    },
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "EnableDnsSupport": "true",
+                "EnableDnsHostname": "true",
+                "CidrBlock": {
+                    "Ref": "VPCCIDR"
+                },
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": "MyVPC"
+                },
+                {
+                    "Key": "CloudFormationStack",
+                    "Value": {
+                        "Ref": "AWS::StackId"
+                    }
+                }]
+            }
+   		},	
+		"InternetGateway": {
+		    "Type": "AWS::EC2::InternetGateway",
+			"Properties": {
+			    "Tags": [{
+				    "key": "Name",
+					"Value": "MyVPC-IGW"
+				},	
+				{
+				    "Key": "CloudFormationStack",
+					"Value": {
+					    "Ref": "AWS::StackId"
+					}
+                }]
+            }
+        },
+        "PublicSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PublicSubnetCIDR"
+                },
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": {
+                        "Fn::Join": ["",
+                        ["Public ",
+                        {
+                           "Ref": "PublicSubnetCIDR"
+                        }]]
+                    }
+                },
+                {
+				    "Key": "CloudFormationStack",
+					"Value": {
+					    "Ref": "AWS::StackId"
+					}
+                }]
+            }
+        },			
+		"AttachGateway": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+				"VpcId": {
+                    "Ref": "VPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicSubnetRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": {
+                        "Fn::Join": ["",
+                        ["Public ",
+                        {
+                            "Ref": "PubicSubnetCIDR"
+                        }]]
+					}	
+                },
+                {
+                    "Key": "CloudFormationStack",
+                    "Value": {
+                        "Ref": "AWS::StackId"
+                    }
+                }]
+            }
+        },
+        "PublicRoute": {
+            "Type": "AWS::Ec2::Route",
+            "DependsOn": "AttachGateway",
+			"Properties": {
+			    "RouteTableId": {
+				    "Ref": "InternetGateway"
+				},
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"GatewayId": {
+				    "Ref": "InternetGateway"
+		        }	
+			}
+        },        			
+		"PublicSubnetRouteTableAssociation": {
+		    "Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+			    "SubnetId": {
+				    "Ref": "PublicSubnet"
+				},
+				"RouteTableId": {
+					  "Ref": "PublicSubnetRouteTable"
+				}	
+			}
+		},		
+		"PublicInstanceSG": {
+		    "Type": "AWS::Ec2::SecurityGroup",
+      		"Properties": {
+			    "VpcId": {
+				     "Ref": "VPC"
+				},
+                "GroupDescription": "Enable SSH access via port 22",
+                "SecurityGroupIngress": [{
+                    "IpProtocol": "tcp",
+                    "FromPort": "22",
+					"ToPort": "22",
+                    "CidrIp": {
+                       "Ref": "SSHLocation"
+                    }
+                },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": "80",
+                    "ToPort": "80",
+					"CidrIp": "0.0.0.0/0"
+				}],
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": {
+                        "Fn::Join": ["",
+                        ["PublicSG ",
+                        {
+                           "Ref": "VPCCIDR"
+                        }]]
+                    }
+                },
+                {
+                    "Key": "CloudFormationStack",
+                    "Value": {
+                       "Ref": "AWS::StackId"
+                    }
+                }]
+            }
+        }
+    },
+	"webServer": {
+	  "Type": "AWS::EC2::Instance",
+	  "Properties": {
+	  "ImageId"            : "ami-",
+	  "InstanceType"       : "t2.micro",
+	  "KeyName"            : "",
+	  "NetworkInterfaces" : [{
+	  "AssociationPublicIpAddress" : "true",
+	  "DeviceIndex"                : "0",
+	  "DeleteOnTermination"        : "true",
+	  "SubnetId"                   : {"Ref": "PuublicSubnet"},
+	  "GroupSet"                    : [ "sg-61217a14" ]
+	  }],
+	  "Tags": [{
+	            "Key": "Name",
+				"Value": "MyWebserverInstance"
+			}]	
+	}
+    },	
+    "Outputs": {
+        "VpcId": {
+            "Description": "VpcId of the newly created VPC",
+            "Value": {
+               "Ref": "PublicSubnet"
+            }
+        },
+        "PublicSubnet": {
+            "Description": "SubnetId of the public subnet",
+            "Value": {
+                "Ref": "PublicSubnet"
+            }
+        },
+        "PublicSubnetRouteTable": {
+		    "Description": "Public route table",
+			"Value": {
+			    "Ref": "PublicSubnetRouteTable"
+			}
+        },			
+		"PublicInstanceSg": {
+            "Description": "SG for instances in public subnet",
+            "Value": {
+                "Ref": "PublicInstanceSG"
+            }
+        }
+    
+	}
+}	
