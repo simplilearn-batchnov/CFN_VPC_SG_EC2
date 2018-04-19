@@ -24,7 +24,7 @@
             }
         }
 	},	 
-	"parameters": {
+	"Parameters": {
 	    "VPCCIDR": {
 	        "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
 		"ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
@@ -32,7 +32,7 @@
 		"Description": "CIDR block for entire VPC.",
 		"Type": "String"
 		},
-        "pubicSubnetCIDR": {
+        "PubicSubnetCIDR": {
               "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
 	      "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
 	      "Default": "10.10.10.0/24",
