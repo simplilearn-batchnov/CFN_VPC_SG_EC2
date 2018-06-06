@@ -215,7 +215,7 @@
 	"webServer": {
 	  "Type": "AWS::EC2::Instance",
 	  "Properties": {
-	  "ImageId"            : "ami-",
+	  "ImageId"            : "ami-6871a115",
 	  "InstanceType"       : "t2.micro",
 	  "KeyName"            : "",
 	  "NetworkInterfaces" : [{
